@@ -64,14 +64,28 @@ def parse_time(s: str) -> datetime:
     return datetime.fromisoformat(s.replace("Z", "+00:00"))
 
 
-def is_rolling(unlock: str) -> bool:
-    """True when the unlock text says midnight-local rolling unlock."""
+def rolling_score(unlock: str) -> float:
+    """How rolling-midnight this launch's unlock is: 1.0 for a pure midnight-local
+    rolling unlock, 0.0 for a single simultaneous global unlock, 0.5 when the
+    launch mixed the two (e.g. consoles rolling at midnight local while PC
+    unlocked once globally — ELDEN RING, Cyberpunk 2077). The target (GTA VI)
+    unlocks at midnight local, country by country, so rolling launches are the
+    closest analogues; a mixed launch is still closer than a purely
+    simultaneous one, so it earns partial credit instead of none."""
     u = (unlock or "").lower()
-    if "single global" in u or "single simultaneous" in u or "simultaneous across" in u:
-        return False
-    if "simultaneous" in u and "midnight" not in u:
-        return False
-    return "midnight local" in u or "rolling" in u or "midnight" in u
+    simultaneous = (
+        "single global" in u
+        or "single simultaneous" in u
+        or "simultaneous across" in u
+        or ("simultaneous" in u and "midnight" not in u)
+        or "global unlock" in u
+    )
+    rolling = "midnight local" in u or "rolling" in u or "midnight" in u
+    if rolling and simultaneous:
+        return 0.5
+    if rolling:
+        return 1.0
+    return 0.0
 
 
 def release_day_values(comp: dict) -> list[float] | None:
@@ -168,8 +182,9 @@ def forecast_case(case: dict, name: str) -> dict:
         if vals is None:
             continue
         w = math.exp(-0.5 * ((math.log(vals[0]) - log_p1) / BANDWIDTH) ** 2)
-        if is_rolling(comp.get("unlock", "")):
-            w *= ROLLING_BONUS
+        # Rolling-midnight launches are the closest analogues to the target;
+        # mixed unlocks earn partial credit (see rolling_score).
+        w *= 1.0 + (ROLLING_BONUS - 1.0) * rolling_score(comp.get("unlock", ""))
         log_v1 = math.log(vals[0])
         for h in range(2, 25):
             per_hour[h].append((math.log(vals[h - 1]) - log_v1, w))
