@@ -18,7 +18,12 @@ Weights (validated by leave-one-out CV, see `loo.py` / `loo-results.txt`):
   (ELDEN RING, Cyberpunk) peaked at hour 1 and decline, small launches ramp.
 - x3 bonus for rolling-midnight unlocks (unlock text mentions midnight-local
   rolling unlock). The target (GTA VI, and all practice launches) unlocks at
-  rolling local midnight.
+  rolling local midnight. Mixed unlocks (consoles rolling + PC simultaneous,
+  e.g. ELDEN RING, Cyberpunk 2077) earn partial credit (x2) instead of none:
+  `rolling_score` returns 1.0 / 0.5 / 0.0 and the multiplier is
+  `1 + 2 * rolling_score`. Practice loss unchanged at 0.228645 (the mixed
+  launches' reweighting does not move the rounded quantiles), so the change
+  is a correctness fix, not a re-tune.
 
 Everything is computed at runtime from the case file's comparables (38 in a
 practice case, 42 in the final). Nothing is hardcoded from the practice
